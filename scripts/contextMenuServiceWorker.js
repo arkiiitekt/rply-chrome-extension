@@ -1,4 +1,4 @@
-// Function to get + decode API key
+// Get and decode API key
 const getKey = () => {
   return new Promise((resolve, reject) => {
     chrome.storage.local.get(['openai-key'], (result) => {
@@ -10,6 +10,7 @@ const getKey = () => {
   });
 };
 
+// Inject message
 const sendMessage = (content) => {
   chrome.tabs.query({ active: true, currentWindow: true }, (tabs) => {
     const activeTab = tabs[0].id;
@@ -25,6 +26,7 @@ const sendMessage = (content) => {
     );
   });
 };
+
 
 const generate = async (prompt) => {
   // Get your API key from storage
@@ -53,34 +55,28 @@ const generate = async (prompt) => {
 
 const generateCompletionAction = async (info) => {
   try {
-    // Send mesage with generating text (this will be like a loading indicator)
-    sendMessage('generating...');
+    // Send message with generating text
+    sendMessage('generating reply...');
 
     const { selectionText } = info;
     const basePromptPrefix = `
-      Write me a detailed table of contents for a blog post with the title below.
-      
-      Title:
-      `;
+      Write a reply with the text below. 
 
-      const baseCompletion = await generate(
-        `${basePromptPrefix}${selectionText}`
-      );
+    `;
+
+    const baseCompletion = await generate(
+      `${basePromptPrefix}${selectionText}`
+    );
+    
+    const secondPrompt = `
+      Take the message below and rewrite it using a friendly tone, and adding the words dog and banana. Make it 2 paragraphs long.
+      Message: ${baseCompletion.text}
+    `;
+    
+    const secondPromptCompletion = await generate(secondPrompt);
       
-      const secondPrompt = `
-        Take the table of contents and title of the blog post below and generate a blog post written in thwe style of Paul Graham. Make it feel like a story. Don't just list the points. Go deep into each one. Explain why.
-        
-        Title: ${selectionText}
-        
-        Table of Contents: ${baseCompletion.text}
-        
-        Blog Post:
-		  `;
-      
-      const secondPromptCompletion = await generate(secondPrompt);
-      
-      // Send the output when we're all done
-      sendMessage(secondPromptCompletion.text);
+    // Send the output when we're all done
+    sendMessage(secondPromptCompletion.text);
   } catch (error) {
     console.log(error);
 
@@ -89,11 +85,11 @@ const generateCompletionAction = async (info) => {
   }
 };
 
-// Add this in scripts/contextMenuServiceWorker.js
+// Context menu
 chrome.runtime.onInstalled.addListener(() => {
   chrome.contextMenus.create({
     id: 'context-run',
-    title: 'Generate blog post',
+    title: 'Reply',
     contexts: ['selection'],
   });
 });
